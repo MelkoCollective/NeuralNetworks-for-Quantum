@@ -243,8 +243,8 @@ def run_VMC(vmc, epochs, delta, qmc_data, energy, variance, batch_size=100):
 import os
 import glob
 
-path = "../QMC_data"
-dim_path = "Dim=4_M=1000000_V=7_omega=1.0_delta=1.0" # Can change this to look at Dim = 4, 8, 12, 16
+path = "../../../QMC_data"
+dim_path = "Dim=8_M=1000000_V=7_omega=1.0_delta=1.0" # Can change this to look at Dim = 4, 8, 12, 16
 files_we_want = glob.glob(os.path.join(path,dim_path,'samples*'))
 uploaded = {}
 for file in files_we_want:
@@ -255,8 +255,8 @@ for file in files_we_want:
 qmc_dataset = create_tf_dataset(uploaded, data_step_size=100)
 
 # Hamiltonian parameters
-Lx = 4     # Linear size in x direction
-Ly = 4      # Linear size in y direction
+Lx = 8     # Linear size in x direction
+Ly = 8      # Linear size in y direction
 N = Lx*Ly   # Total number of atoms:w
 V = 7.0     # Strength of Van der Waals interaction
 Omega = 1.0 # Rabi frequency
@@ -266,8 +266,8 @@ delta = 1.0 # Detuning
 lr = 0.001     # learning rate of Adam optimizer
 nh = 16        # Number of hidden units in the GRU cell
 ns = 1000     # Number of samples used to approximate the energy at each step
-qmc_epochs = 100 # Training iterations for qmc
-vmc_epochs = 100 # Training iterations for vmc
+vmc_epochs = 800 # Training iterations for vmc
+qmc_epochs = 1000 # Training iterations for qmc
 total_epochs = vmc_epochs+qmc_epochs # Total training iterations
 seed = 1234    # Seed of RNG
 
@@ -285,15 +285,12 @@ variance = []
 # Optimize with data first
 wavefunction, energy, variance = run_VMC(wavefunction, qmc_epochs, delta, qmc_dataset, energy, variance)
 
-a_file = open("E4qmc.dat", "w")
+a_file = open("E8qmc1.dat", "w")
 np.savetxt(a_file, energy)
 a_file.close()
-
-#wavefunction.save_weights("qmc.weights")
-#wavefunction.load_weights("qmc.weights")
-
-wavefunction, energy, variance = run_VMC(wavefunction, vmc_epochs, delta, None, energy, variance)
-
-a_file = open("E4qmc_vmc2.dat", "w")
-np.savetxt(a_file, energy)
-a_file.close()
+ 
+# wavefunction, energy, variance = run_VMC(wavefunction, vmc_epochs, delta, None, energy, variance)
+# 
+# a_file = open("E8qmc_vmc.dat", "w")
+# np.savetxt(a_file, energy)
+# a_file.close()
