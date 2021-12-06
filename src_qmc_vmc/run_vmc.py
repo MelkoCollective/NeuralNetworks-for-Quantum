@@ -187,13 +187,13 @@ def run_VMC(vmc, epochs, delta, qmc_data, energy, variance, batch_size=100):
         print("Running VMC for delta =",delta)
 
     # You can remove the tqdm() here to get rid of the status bar
-    #for n in range(1, epochs+1):
-    for n in tqdm(range(1,epochs+1)):
+    for n in range(1, epochs+1):
+        #for n in tqdm(range(1,epochs+1)):
         
         #use qmc_data to update RNN weights
         if qmc_data != None:
             dset = qmc_data.shuffle(len(qmc_data))
-            dset = dset.batch(batch_size, num_parallel_calls=5, deterministic=False)
+            dset = dset.batch(batch_size)
         
             for i, batch in enumerate(dset):
                 # Evaluate the loss function in AD mode
