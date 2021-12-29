@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -t 2-00:00
+#SBATCH -t 7-00:00
 #SBATCH --mem=5000
 #SBATCH --account=rrg-rgmelko-ab
 
