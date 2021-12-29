@@ -256,7 +256,7 @@ lr = 0.001     # learning rate of Adam optimizer
 nh = 16        # Number of hidden units in the GRU cell
 ns = 1000     # Number of samples used to approximate the energy at each step
 qmc_epochs = 0 # Training iterations for qmc, if 0 only do vmc
-vmc_epochs = 1000 # Training iterations for vmc, if 0 only do qmc
+vmc_epochs = 4000 # Training iterations for vmc, if 0 only do qmc
 total_epochs = vmc_epochs+qmc_epochs # Total training iterations
 seed = 1234    # Seed of RNG
 batch_size = 100 # Batch size for QMC training
@@ -270,7 +270,7 @@ variance = []
 
 if qmc_epochs != 0:
 
-    path = "../QMC_data"
+    path = "../../../../../QMC_data"
     dim_path = "Dim={}_M=1000000_V={}_omega={}_delta={}".format(Lx, int(V), Omega, delta) # Can change this to look at Dim = 4, 8, 12, 16
     files_we_want = glob.glob(os.path.join(path,dim_path,'samples*'))
     uploaded = {}
