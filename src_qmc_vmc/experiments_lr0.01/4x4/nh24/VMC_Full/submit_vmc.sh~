@@ -3,7 +3,11 @@
 #SBATCH --mem=5000
 #SBATCH --account=rrg-rgmelko-ab
 
+<<<<<<< HEAD
 #SBATCH --mail-user=msmoss@uwaterloo.ca
+=======
+#SBATCH --mail-user=sczischek@uwaterloo.ca
+>>>>>>> 6b2e26d6f9c9ffc71f74af3ee69537c1b799f072
 #SBATCH --mail-type=ALL
 
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
