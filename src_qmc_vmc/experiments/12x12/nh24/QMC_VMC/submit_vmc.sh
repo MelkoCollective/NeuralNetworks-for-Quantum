@@ -13,6 +13,6 @@ virtualenv --no-download $SLURM_TMPDIR/env
 source $SLURM_TMPDIR/env/bin/activate
 pip install --no-index --upgrade pip
 
-pip install --no-index -r requirements_vim.txt
+pip install --no-index -r requirements_vmc.txt
 
 python run_vmc.py
