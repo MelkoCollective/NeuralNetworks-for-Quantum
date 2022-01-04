@@ -1,0 +1,18 @@
+created virtual environment CPython3.6.10.final.0-64 in 1295ms
+  creator CPython3Posix(dest=/local/czischek.56156722.0/env, clear=False, global=False)
+  seeder FromAppData(download=False, pip=latest, setuptools=latest, wheel=latest, via=copy, app_data_dir=/home/czischek/.local/share/virtualenv/seed-app-data/v1.0.1)
+  activators BashActivator,CShellActivator,FishActivator,PowerShellActivator,PythonActivator,XonshActivator
+Ignoring pip: markers 'python_version < "3"' don't match your environment
+Looking in links: /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo/avx2, /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo/generic, /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic
+Processing /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic/pip-21.2.3+computecanada-py3-none-any.whl
+Installing collected packages: pip
+  Attempting uninstall: pip
+    Found existing installation: pip 20.0.2
+    Uninstalling pip-20.0.2:
+      Successfully uninstalled pip-20.0.2
+Successfully installed pip-21.2.3+computecanada
+ERROR: Could not open requirements file: [Errno 2] No such file or directory: 'requirements.txt'
+Traceback (most recent call last):
+  File "run_vmc.py", line 1, in <module>
+    import numpy as np
+ModuleNotFoundError: No module named 'numpy'
