@@ -1,9 +1,9 @@
 #!/bin/bash
-#SBATCH -t 2-00:00
+#SBATCH -t 5-00:00
 #SBATCH --mem=5000
 #SBATCH --account=rrg-rgmelko-ab
 
-#SBATCH --mail-user=msmoss@uwaterloo.ca
+#SBATCH --mail-user=sczischek@uwaterloo.ca
 #SBATCH --mail-type=ALL
 
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
