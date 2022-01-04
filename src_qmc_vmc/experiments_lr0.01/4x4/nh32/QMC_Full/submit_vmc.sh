@@ -3,9 +3,6 @@
 #SBATCH --mem=5000
 #SBATCH --account=rrg-rgmelko-ab
 
-#SBATCH --mail-user=msmoss@uwaterloo.ca
-#SBATCH --mail-type=ALL
-
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 module load python/3.6
