@@ -252,11 +252,11 @@ Omega = 1.0 # Rabi frequency
 delta = 1.0 # Detuning
 
 # RNN-VMC parameters
-lr = 0.001     # learning rate of Adam optimizer
-nh = 8        # Number of hidden units in the GRU cell
+lr = 0.01     # learning rate of Adam optimizer
+nh = 24        # Number of hidden units in the GRU cell
 ns = 1000     # Number of samples used to approximate the energy at each step
-qmc_epochs = 500 # Training iterations for qmc, if 0 only do vmc
-vmc_epochs = 500 # Training iterations for vmc, if 0 only do qmc
+qmc_epochs = 200 # Training iterations for qmc, if 0 only do vmc
+vmc_epochs = 3800 # Training iterations for vmc, if 0 only do qmc
 total_epochs = vmc_epochs+qmc_epochs # Total training iterations
 seed = 1234    # Seed of RNG
 batch_size = 100 # Batch size for QMC training
