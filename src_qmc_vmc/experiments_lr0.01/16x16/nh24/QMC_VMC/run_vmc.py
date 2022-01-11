@@ -236,6 +236,12 @@ def run_VMC(vmc, epochs, delta, qmc_data, energy, variance, batch_size=100):
         var_E = np.var(energies)/float(N)
         energy.append(avg_E) #average over samples
 
+        a_file = open("E_QMC_VMC_{}_{}.dat".format(Lx,nh), "w")
+        np.savetxt(a_file, energy)
+        a_file.close()
+
+        vmc.save_weights("QMC_VMC.weights")
+        
     return vmc, energy, variance
 
 # ============= Main program
@@ -261,11 +267,16 @@ total_epochs = vmc_epochs+qmc_epochs # Total training iterations
 seed = 1234    # Seed of RNG
 batch_size = 100 # Batch size for QMC training
 skip_data = 100 # Skip elements in QMC data set
+load_weights = False # Decide if previously stored weights should be loaded
 
 exact_energy = {4: -0.4534132086591546, 8: -0.40518005298872917, 12:-0.3884864748124427 , 16: -0.380514770608724}
 
 wavefunction = VariationalMonteCarlo(Lx,Ly,V,Omega,delta,nh,lr,Lx+Ly,seed)
-energy = []
+if load_weights == True:
+    wavefunction.load_weights("QMC_VMC.weights")
+    energy = np.loadtxt("E_QMC_VMC_{}_{}.dat".format(Lx,nh)).tolist()
+else:
+    energy = []
 variance = []
 
 if qmc_epochs != 0:
@@ -292,7 +303,4 @@ if qmc_epochs != 0:
 
 if vmc_epochs != 0:
     wavefunction, energy, variance = run_VMC(wavefunction, vmc_epochs, delta, None, energy, variance, batch_size)
-    
-a_file = open("E_QMC_VMC_{}_{}.dat".format(Lx,nh), "w")
-np.savetxt(a_file, energy)
-a_file.close()
+
