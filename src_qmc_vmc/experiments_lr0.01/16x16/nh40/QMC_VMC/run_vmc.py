@@ -261,13 +261,13 @@ delta = 1.0 # Detuning
 lr = 0.01     # learning rate of Adam optimizer
 nh = 40        # Number of hidden units in the GRU cell
 ns = 1000     # Number of samples used to approximate the energy at each step
-qmc_epochs = 200 # Training iterations for qmc, if 0 only do vmc
-vmc_epochs = 3800 # Training iterations for vmc, if 0 only do qmc
+qmc_epochs = 0 # Training iterations for qmc, if 0 only do vmc
+vmc_epochs = 1450 # Training iterations for vmc, if 0 only do qmc
 total_epochs = vmc_epochs+qmc_epochs # Total training iterations
 seed = 1234    # Seed of RNG
 batch_size = 100 # Batch size for QMC training
 skip_data = 100 # Skip elements in QMC data set
-load_weights = False # Decide if previously stored weights should be loaded
+load_weights = True # Decide if previously stored weights should be loaded
 
 exact_energy = {4: -0.4534132086591546, 8: -0.40518005298872917, 12:-0.3884864748124427 , 16: -0.380514770608724}
 
