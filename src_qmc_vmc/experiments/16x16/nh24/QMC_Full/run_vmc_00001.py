@@ -240,16 +240,16 @@ def run_VMC(vmc, epochs, delta, qmc_data, energy, variance, batch_size=100):
         energy.append(avg_E) #average over samples
         
         #save energies at each step
-        a_file = open("E_VMC_{}_{}.dat".format(Lx,nh), "w")
+        a_file = open("E_QMC_{}_{}_fulldata_00001.dat".format(Lx,nh), "w")
         np.savetxt(a_file, energy)
         a_file.close()
 
         #save RNN weights/checkpoints at each step
         ckpts.append(n)
-        wavefunction.save_weights("VMC.weights")
+        wavefunction.save_weights("qmc_00001.weights")
 
         #save list of checkpoints so you know the last energy matches up with the weights saved
-        n_file = open("ckpt_steps", "w")
+        n_file = open("ckpt_steps_00001", "w")
         np.savetxt(n_file, ckpts)
         n_file.close()
 
@@ -269,20 +269,20 @@ Omega = 1.0 # Rabi frequency
 delta = 1.0 # Detuning
 
 # RNN-VMC parameters
-lr = 0.001     # learning rate of Adam optimizer
-nh = 32        # Number of hidden units in the GRU cell
+lr = 0.00001     # learning rate of Adam optimizer
+nh = 24        # Number of hidden units in the GRU cell
 ns = 1000     # Number of samples used to approximate the energy at each step
-qmc_epochs = 0 # Training iterations for qmc, if 0 only do vmc
-vmc_epochs = 4205 # Training iterations for vmc, if 0 only do qmc
+qmc_epochs = 1000 # Training iterations for qmc, if 0 only do vmc
+vmc_epochs = 0 # Training iterations for vmc, if 0 only do qmc
 total_epochs = vmc_epochs+qmc_epochs # Total training iterations
 seed = 1234    # Seed of RNG
 batch_size = 100 # Batch size for QMC training
-skip_data = 100 # Skip elements in QMC data set
+skip_data = 1 # Skip elements in QMC data set
 
 exact_energy = {4: -0.4534132086591546, 8: -0.40518005298872917, 12:-0.3884864748124427 , 16: -0.380514770608724}
 
 # Distinguish between a new run and a continued run
-continuation = 'True' # Tells the program if the run is a continuation of a previous run
+continuation = 'False' # Tells the program if the run is a continuation of a previous run
                       # If continuation = 'False' then the RNN will be randomly initialized and trained from there
                       # If continuation = 'True' then the RNN will read in the hidden units and weights from previous runs and
                       # continue training from there
@@ -290,8 +290,8 @@ continuation = 'True' # Tells the program if the run is a continuation of a prev
 if continuation == 'True':
     # read in the previous weights
     wavefunction = VariationalMonteCarlo(Lx,Ly,V,Omega,delta,nh,lr,Lx+Ly,seed)
-    wavefunction.load_weights("VMC.weights")
-    energy = np.loadtxt("E_VMC_{}_{}.dat".format(Lx,nh)).tolist()
+    wavefunction.load_weights("qmc_00001.weights")
+    energy = np.loadtxt("E_QMC_{}_{}_fulldata_00001.dat".format(Lx,nh)).tolist()
 
 else:
     wavefunction = VariationalMonteCarlo(Lx,Ly,V,Omega,delta,nh,lr,Lx+Ly,seed)

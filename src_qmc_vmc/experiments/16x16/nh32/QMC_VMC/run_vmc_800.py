@@ -187,7 +187,8 @@ def run_VMC(vmc, epochs, delta, qmc_data, energy, variance, batch_size=100):
         print("Running VMC for delta =",delta)
     
     #initialize list of checkpoints (ensure its working properly)
-    ckpts = []
+    ckpts_QMC = []
+    ckpts_VMC = []
 
     # You can remove the tqdm() here to get rid of the status bar
     for n in range(1, epochs+1):
@@ -240,18 +241,28 @@ def run_VMC(vmc, epochs, delta, qmc_data, energy, variance, batch_size=100):
         energy.append(avg_E) #average over samples
         
         #save energies at each step
-        a_file = open("E_VMC_{}_{}.dat".format(Lx,nh), "w")
+        a_file = open("E_QMC{}_VMC_{}_{}.dat".format(qmc_cutoff,Lx,nh), "w")
         np.savetxt(a_file, energy)
         a_file.close()
 
-        #save RNN weights/checkpoints at each step
-        ckpts.append(n)
-        wavefunction.save_weights("VMC.weights")
-
-        #save list of checkpoints so you know the last energy matches up with the weights saved
-        n_file = open("ckpt_steps", "w")
-        np.savetxt(n_file, ckpts)
-        n_file.close()
+        #save RNN weights/checkpoints at each step (separately for QMC and VMC runs)
+        if qmc_data != None:
+            ckpts_QMC.append(n)
+            wavefunction.save_weights("QMC_weights/qmc_step{}.weights".format(n))
+            
+            #save list of checkpoints so you know the last energy matches up with the weights saved
+            n_file = open("QMC_ckpt_steps", "w")
+            np.savetxt(n_file, ckpts_QMC)
+            n_file.close()
+        
+        else:
+            ckpts_VMC.append(n)
+            wavefunction.save_weights("VMC_weights/QMC{}_VMC/VMC.weights".format(qmc_cutoff))
+            
+            #save list of checkpoints so you know the last energy matches up with the weights saved
+            n_file = open("QMC{}_VMC_ckpt_steps".format(qmc_cutoff), "w")
+            np.savetxt(n_file, ckpts_VMC)
+            n_file.close()
 
     return vmc, energy, variance
 
@@ -273,7 +284,8 @@ lr = 0.001     # learning rate of Adam optimizer
 nh = 32        # Number of hidden units in the GRU cell
 ns = 1000     # Number of samples used to approximate the energy at each step
 qmc_epochs = 0 # Training iterations for qmc, if 0 only do vmc
-vmc_epochs = 4205 # Training iterations for vmc, if 0 only do qmc
+qmc_cutoff = 800 # Where to start the VMC from the QMC data
+vmc_epochs = 5000 # Training iterations for vmc, if 0 only do qmc
 total_epochs = vmc_epochs+qmc_epochs # Total training iterations
 seed = 1234    # Seed of RNG
 batch_size = 100 # Batch size for QMC training
@@ -282,7 +294,7 @@ skip_data = 100 # Skip elements in QMC data set
 exact_energy = {4: -0.4534132086591546, 8: -0.40518005298872917, 12:-0.3884864748124427 , 16: -0.380514770608724}
 
 # Distinguish between a new run and a continued run
-continuation = 'True' # Tells the program if the run is a continuation of a previous run
+continuation = 'False' # Tells the program if the run is a continuation of a previous run
                       # If continuation = 'False' then the RNN will be randomly initialized and trained from there
                       # If continuation = 'True' then the RNN will read in the hidden units and weights from previous runs and
                       # continue training from there
@@ -290,12 +302,14 @@ continuation = 'True' # Tells the program if the run is a continuation of a prev
 if continuation == 'True':
     # read in the previous weights
     wavefunction = VariationalMonteCarlo(Lx,Ly,V,Omega,delta,nh,lr,Lx+Ly,seed)
-    wavefunction.load_weights("VMC.weights")
-    energy = np.loadtxt("E_VMC_{}_{}.dat".format(Lx,nh)).tolist()
+    wavefunction.load_weights("VMC_weights/QMC{}_VMC/VMC.weights".format(qmc_cutoff))
+    energy = np.loadtxt("E_QMC{}_VMC_{}_{}.dat".format(qmc_cutoff,Lx,nh)).tolist()
 
 else:
     wavefunction = VariationalMonteCarlo(Lx,Ly,V,Omega,delta,nh,lr,Lx+Ly,seed)
-    energy = []
+    wavefunction.load_weights("QMC_weights/qmc_step{}.weights".format(qmc_cutoff))
+    energy = np.loadtxt("E_QMC_{}_{}.dat".format(Lx,nh)).tolist()
+    energy = energy[0:qmc_cutoff-1]
 
 variance = []
 
