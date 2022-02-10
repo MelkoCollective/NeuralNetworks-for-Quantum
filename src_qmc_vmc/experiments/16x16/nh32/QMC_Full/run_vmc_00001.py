@@ -272,7 +272,7 @@ delta = 1.0 # Detuning
 lr = 0.00001     # learning rate of Adam optimizer
 nh = 32        # Number of hidden units in the GRU cell
 ns = 1000     # Number of samples used to approximate the energy at each step
-qmc_epochs = 1000 # Training iterations for qmc, if 0 only do vmc
+qmc_epochs = 312 # Training iterations for qmc, if 0 only do vmc
 vmc_epochs = 0 # Training iterations for vmc, if 0 only do qmc
 total_epochs = vmc_epochs+qmc_epochs # Total training iterations
 seed = 1234    # Seed of RNG
@@ -282,7 +282,7 @@ skip_data = 1 # Skip elements in QMC data set
 exact_energy = {4: -0.4534132086591546, 8: -0.40518005298872917, 12:-0.3884864748124427 , 16: -0.380514770608724}
 
 # Distinguish between a new run and a continued run
-continuation = 'False' # Tells the program if the run is a continuation of a previous run
+continuation = 'True' # Tells the program if the run is a continuation of a previous run
                       # If continuation = 'False' then the RNN will be randomly initialized and trained from there
                       # If continuation = 'True' then the RNN will read in the hidden units and weights from previous runs and
                       # continue training from there

@@ -12,7 +12,7 @@ class VariationalMonteCarlo(tf.keras.Model):
     def __init__(self, Lx, Ly, 
                  V, Omega, delta,
                  num_hidden, learning_rate,
-                 epochs, trunc, seed=1234):
+                 trunc=2, seed=1234):
         
         super(VariationalMonteCarlo, self).__init__()
 
@@ -22,12 +22,11 @@ class VariationalMonteCarlo(tf.keras.Model):
         self.V        = V               # Van der Waals potential
         self.Omega    = Omega           # Rabi frequency
         self.delta    = delta           # Detuning
-        self.trunc    = trunc           # Truncation, set to Lx for none, default is 2
+        self.trunc    = trunc           # Truncation, set to Lx+Ly for none, default is 2
 
         self.N        = Lx * Ly         # Number of spins
         self.nh       = num_hidden      # Number of hidden units in the RNN
-        self.seed     = seed            # Seed of random number generator
-        self.epochs   = epochs          # Training epochs 
+        self.seed     = seed            # Seed of random number generator 
         self.K        = 2               # Dimension of the local Hilbert space
 
         # Set the seed of the rng
@@ -84,18 +83,18 @@ class VariationalMonteCarlo(tf.keras.Model):
     def logpsi(self,samples):
         # Shift data
         num_samples = tf.shape(samples)[0]
-        data   = tf.one_hot(samples[:,0:self.N-1],depth=self.K)
+        data = tf.one_hot(samples[:,0:self.N-1],depth=self.K)
 
         x0 = 0.0*tf.one_hot(tf.zeros(shape=[num_samples,1],dtype=tf.int32),depth=self.K)
         inputs = tf.concat([x0,data],axis=1)
-
+        
         hidden_state = tf.zeros(shape=[num_samples,self.nh])
         rnn_output,_ = self.rnn(inputs,initial_state = hidden_state)
         probs        = self.dense(rnn_output)
-
+            
         log_probs   = tf.reduce_sum(tf.multiply(tf.math.log(1e-10+probs),tf.one_hot(samples,depth=self.K)),axis=2)
-
-        return 0.5*tf.reduce_sum(log_probs,axis=1)
+        
+        return 0.5 * tf.reduce_sum(log_probs, axis=1)
 
     #@tf.function
     def localenergy(self,samples,logpsi):
@@ -107,7 +106,8 @@ class VariationalMonteCarlo(tf.keras.Model):
      
         for n in range(len(self.nns)):
             eloc += (self.V/self.nns[n][0]) * tf.cast(samples[:,self.nns[n][1]]*samples[:,self.nns[n][2]],tf.float32)
-        
+
+        flip_logpsi = tf.zeros(shape=[tf.shape(samples)[0]])
 
         # Off-diagonal part
         for j in range(self.N):
@@ -115,7 +115,7 @@ class VariationalMonteCarlo(tf.keras.Model):
             flip_samples[:,j] = 1 - flip_samples[:,j]
             flip_logpsi = self.logpsi(flip_samples)
             eloc += -0.5*self.Omega * tf.math.exp(flip_logpsi-logpsi)
-
+            
         return eloc
 
     """ Generate the square lattice structures """
@@ -157,23 +157,23 @@ class VariationalMonteCarlo(tf.keras.Model):
 
 
 def create_tf_dataset(uploaded_files, data_step_size=100):
-  '''
-  create tensor flow data set from uploaded files
+    '''
+    create tensor flow data set from uploaded files
     data_step_size (int): determines step size when loading data
-  '''
-  data = []
-  for file in uploaded_files:
-    new_data = uploaded_files[file]
-    new_data = new_data.astype(int)
-    new_data = new_data[::data_step_size]
-    print("New data shape: ", np.array(new_data).shape)
-    data.extend(new_data)
+    '''
+    data = []
+    for file in uploaded_files:
+        new_data = uploaded_files[file]
+        new_data = new_data.astype(int)
+        new_data = new_data[::data_step_size]
+        #print("New data shape: ", np.array(new_data).shape)
+        data.extend(new_data)
 
-  #convert to tf.data.Dataset
-  data = np.array(data)
-  print("Overall dataset shape: ", data.shape) #shape = (Num_examples, N)
-  dataset = tf.data.Dataset.from_tensor_slices(data)
-  return dataset
+    #convert to tf.data.Dataset
+    data = np.array(data)
+    print("Overall dataset shape: ", data.shape) #shape = (Num_examples, N)
+    dataset = tf.data.Dataset.from_tensor_slices(data)
+    return dataset
 
 def run_VMC(vmc, epochs, delta, qmc_data, energy, variance, batch_size=100):
     '''
@@ -182,115 +182,138 @@ def run_VMC(vmc, epochs, delta, qmc_data, energy, variance, batch_size=100):
     '''
 
     if qmc_data != None:
-      print("Running VMC using QMC data for delta = ", delta)
+        print("Running VMC using QMC data for delta = ", delta)
     else:
-      print("Running VMC for delta =",delta)
+        print("Running VMC for delta =",delta)
+    
+    #initialize list of checkpoints (ensure its working properly)
+    ckpts = []
 
-    for n in tqdm(range(1,epochs+1)):
-      samples, _ = vmc.sample(ns)
-      
-      # Evaluate the loss function in AD mode
-      with tf.GradientTape() as tape:
-          sample_logpsi = vmc.logpsi(samples)
-          sample_eloc = vmc.localenergy(samples, sample_logpsi)
-          sample_Eo = tf.stop_gradient(tf.reduce_mean(sample_eloc))
+    # You can remove the tqdm() here to get rid of the status bar
+    for n in range(1, epochs+1):
+        #for n in tqdm(range(1,epochs+1))
 
-          sample_loss = tf.reduce_mean(2.0*tf.multiply(sample_logpsi, tf.stop_gradient(sample_eloc)) - 2.0*sample_Eo*sample_logpsi)
-
-
-      #use qmc_data to update RNN weights
-      if qmc_data != None:
-          dset = qmc_data.shuffle(len(qmc_data))
-          dset = dset.batch(batch_size, num_parallel_calls=5, deterministic=False)
+        #use qmc_data to update RNN weights
+        if qmc_data != None:
+            dset = qmc_data.shuffle(len(qmc_data))
+            dset = dset.batch(batch_size)
         
-          for i, batch in enumerate(dset):
-              # Evaluate the loss function in AD mode
-              with tf.GradientTape() as tape:
-                  logpsi = vmc.logpsi(batch)
-                  """
-                  eloc = vmc.localenergy(batch, logpsi)
-                  Eo = tf.stop_gradient(tf.reduce_mean(eloc))
-
-                  loss = tf.reduce_mean(2.0*tf.multiply(logpsi, tf.stop_gradient(eloc)) - 2.0*Eo*logpsi)
-                  """
+            for i, batch in enumerate(dset):
+                # Evaluate the loss function in AD mode
+                with tf.GradientTape() as tape:
+                    logpsi = vmc.logpsi(batch)
                     
-                  loss = - 2.0 * tf.reduce_mean(logpsi)
+                    loss = - 2.0 * tf.reduce_mean(logpsi)
 
-              # Compute the gradients either with qmc_loss
-              gradients = tape.gradient(loss, vmc.trainable_variables)
+                # Compute the gradients either with qmc_loss
+                gradients = tape.gradient(loss, vmc.trainable_variables)
               
-              # Update the parameters
-              vmc.optimizer.apply_gradients(zip(gradients, vmc.trainable_variables))
-      else:
-        # Compute the gradients either with sample_loss
-        gradients = tape.gradient(sample_loss, vmc.trainable_variables)
+                # Update the parameters
+                vmc.optimizer.apply_gradients(zip(gradients, vmc.trainable_variables))
+
+        else:
+            samples, _ = vmc.sample(ns)
+      
+            # Evaluate the loss function in AD mode
+            with tf.GradientTape() as tape:
+                sample_logpsi = vmc.logpsi(samples)
+                with tape.stop_recording():
+                    sample_eloc = tf.stop_gradient(vmc.localenergy(samples, sample_logpsi))
+                    sample_Eo = tf.stop_gradient(tf.reduce_mean(sample_eloc))
+                  
+                sample_loss = tf.reduce_mean(2.0*tf.multiply(sample_logpsi, tf.stop_gradient(sample_eloc)) - 2.0*sample_Eo*sample_logpsi)
+          
+                # Compute the gradients either with sample_loss
+                gradients = tape.gradient(sample_loss, vmc.trainable_variables)
         
-        # Update the parameters
-        vmc.optimizer.apply_gradients(zip(gradients, vmc.trainable_variables))
+                # Update the parameters
+                vmc.optimizer.apply_gradients(zip(gradients, vmc.trainable_variables))
            
-      #append the energy to see convergence
-      energies = sample_eloc.numpy()
-      avg_E = np.mean(energies)/float(N)
-      var_E = np.var(energies)/float(N)
-      energy.append(avg_E) #average over samples
+        #append the energy to see convergence
+        samples, _ = vmc.sample(ns)
+        sample_logpsi = vmc.logpsi(samples)
+        sample_eloc = vmc.localenergy(samples, sample_logpsi)
+
+        energies = sample_eloc.numpy()
+        avg_E = np.mean(energies)/float(N)
+        var_E = np.var(energies)/float(N)
+        energy.append(avg_E) #average over samples
+        
+        #save energies at each step
+        a_file = open("E_VMC_{}_{}_{}.dat".format(Lx,nh,ns), "w")
+        np.savetxt(a_file, energy)
+        a_file.close()
+
+        #save RNN weights/checkpoints at each step
+        ckpts.append(n)
+        wavefunction.save_weights("VMC_{}.weights".format(ns))
+
+        #save list of checkpoints so you know the last energy matches up with the weights saved
+        n_file = open("ckpt_steps_{}".format(ns), "w")
+        np.savetxt(n_file, ckpts)
+        n_file.close()
 
     return vmc, energy, variance
 
 # ============= Main program
 
-
-
 import os
 import glob
 
-path = "../../QMC_data"
-dim_path = "Dim=8_M=1000000_V=7_omega=1.0_delta=1.0" # Can change this to look at Dim = 4, 8, 12, 16
-files_we_want = glob.glob(os.path.join(path,dim_path,'samples*'))
-uploaded = {}
-for file in files_we_want:
-    print(file)
-    data = np.loadtxt(file)
-    uploaded[file] = data
-
-qmc_dataset = create_tf_dataset(uploaded, data_step_size=100)
-
 # Hamiltonian parameters
-Lx = 8     # Linear size in x direction
-Ly = 8      # Linear size in y direction
+Lx = 12     # Linear size in x direction
+Ly = 12     # Linear size in y direction
 N = Lx*Ly   # Total number of atoms:w
 V = 7.0     # Strength of Van der Waals interaction
 Omega = 1.0 # Rabi frequency
-delta = 1.0 # Detuning 
+delta = 1.0 # Detuning
 
 # RNN-VMC parameters
 lr = 0.001     # learning rate of Adam optimizer
-nh = 32        # Number of hidden units in the GRU cell
-ns = 1000     # Number of samples used to approximate the energy at each step
-vmc_epochs = 1000 # Training iterations for vmc
-qmc_epochs = 200 # Training iterations for qmc
+nh = 24        # Number of hidden units in the GRU cell
+ns = 2000     # Number of samples used to approximate the energy at each step
+qmc_epochs = 0 # Training iterations for qmc, if 0 only do vmc
+vmc_epochs = 1848 # Training iterations for vmc, if 0 only do qmc
 total_epochs = vmc_epochs+qmc_epochs # Total training iterations
 seed = 1234    # Seed of RNG
-
-# Exact energy from exact diagonalization for L=4, and QMC for higher L
-# Truncation
-# exact_energy = {4:-0.45776822, 8: -0.41079068589921375
-# , 12: -0.3952409191423294, 16:-0.38780030058038656}
+batch_size = 100 # Batch size for QMC training
+skip_data = 100 # Skip elements in QMC data set
 
 exact_energy = {4: -0.4534132086591546, 8: -0.40518005298872917, 12:-0.3884864748124427 , 16: -0.380514770608724}
 
-wavefunction = VariationalMonteCarlo(Lx,Ly,V,Omega,delta,nh,lr,vmc_epochs,Lx,seed)
-energy = []
+# Distinguish between a new run and a continued run
+continuation = 'True' # Tells the program if the run is a continuation of a previous run
+                      # If continuation = 'False' then the RNN will be randomly initialized and trained from there
+                      # If continuation = 'True' then the RNN will read in the hidden units and weights from previous runs and
+                      # continue training from there
+
+if continuation == 'True':
+    # read in the previous weights
+    wavefunction = VariationalMonteCarlo(Lx,Ly,V,Omega,delta,nh,lr,Lx+Ly,seed)
+    wavefunction.load_weights("VMC_{}.weights".format(ns))
+    energy = np.loadtxt("E_VMC_{}_{}_{}.dat".format(Lx,nh,ns)).tolist()
+
+else:
+    wavefunction = VariationalMonteCarlo(Lx,Ly,V,Omega,delta,nh,lr,Lx+Ly,seed)
+    energy = []
+
 variance = []
 
-# Optimize with data first
-#wavefunction, energy, variance = run_VMC(wavefunction, qmc_epochs, delta, qmc_dataset, energy, variance)
-#
-#a_file = open("E8qmc.dat", "w")
-#np.savetxt(a_file, energy)
-#a_file.close()
- 
-wavefunction, energy, variance = run_VMC(wavefunction, vmc_epochs, delta, None, energy, variance)
+if qmc_epochs != 0:
 
-a_file = open("E8vmc.dat", "w")
-np.savetxt(a_file, energy)
-a_file.close()
+    path = "../../../../../QMC_data"
+    dim_path = "Dim={}_M=1000000_V={}_omega={}_delta={}".format(Lx, int(V), Omega, delta) # Can change this to look at Dim = 4, 8, 12, 16
+    files_we_want = glob.glob(os.path.join(path,dim_path,'samples*'))
+    uploaded = {}
+    for file in files_we_want:
+        data = np.loadtxt(file)
+        uploaded[file] = data
+
+    qmc_dataset = create_tf_dataset(uploaded, data_step_size=skip_data) 
+ 
+    # Optimize with data first
+    wavefunction, energy, variance = run_VMC(wavefunction, qmc_epochs, delta, qmc_dataset, energy, variance, batch_size)
+
+if vmc_epochs != 0:
+    wavefunction, energy, variance = run_VMC(wavefunction, vmc_epochs, delta, None, energy, variance, batch_size)
+    
