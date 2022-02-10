@@ -273,7 +273,7 @@ lr = 0.001     # learning rate of Adam optimizer
 nh = 32        # Number of hidden units in the GRU cell
 ns = 1000     # Number of samples used to approximate the energy at each step
 qmc_epochs = 0 # Training iterations for qmc, if 0 only do vmc
-vmc_epochs = 4205 # Training iterations for vmc, if 0 only do qmc
+vmc_epochs = 528 # Training iterations for vmc, if 0 only do qmc
 total_epochs = vmc_epochs+qmc_epochs # Total training iterations
 seed = 1234    # Seed of RNG
 batch_size = 100 # Batch size for QMC training
@@ -292,6 +292,7 @@ if continuation == 'True':
     wavefunction = VariationalMonteCarlo(Lx,Ly,V,Omega,delta,nh,lr,Lx+Ly,seed)
     wavefunction.load_weights("VMC.weights")
     energy = np.loadtxt("E_VMC_{}_{}.dat".format(Lx,nh)).tolist()
+    energy = energy[0:8096]
 
 else:
     wavefunction = VariationalMonteCarlo(Lx,Ly,V,Omega,delta,nh,lr,Lx+Ly,seed)

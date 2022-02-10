@@ -185,11 +185,14 @@ def run_VMC(vmc, epochs, delta, qmc_data, energy, variance, batch_size=100):
         print("Running VMC using QMC data for delta = ", delta)
     else:
         print("Running VMC for delta =",delta)
+    
+    #initialize list of checkpoints (ensure its working properly)
+    ckpts = []
 
     # You can remove the tqdm() here to get rid of the status bar
     for n in range(1, epochs+1):
-        #for n in tqdm(range(1,epochs+1)):
-        
+        #for n in tqdm(range(1,epochs+1))
+
         #use qmc_data to update RNN weights
         if qmc_data != None:
             dset = qmc_data.shuffle(len(qmc_data))
@@ -235,13 +238,21 @@ def run_VMC(vmc, epochs, delta, qmc_data, energy, variance, batch_size=100):
         avg_E = np.mean(energies)/float(N)
         var_E = np.var(energies)/float(N)
         energy.append(avg_E) #average over samples
-    
-        a_file = open("E_QMC_{}_{}.dat".format(Lx,nh), "w")
+        
+        #save energies at each step
+        a_file = open("E_QMC_{}_{}_fulldata.dat".format(Lx,nh), "w")
         np.savetxt(a_file, energy)
         a_file.close()
 
-        vmc.save_weights("QMC.weights")
-        
+        #save RNN weights/checkpoints at each step
+        ckpts.append(n)
+        wavefunction.save_weights("qmc.weights")
+
+        #save list of checkpoints so you know the last energy matches up with the weights saved
+        n_file = open("ckpt_steps", "w")
+        np.savetxt(n_file, ckpts)
+        n_file.close()
+
     return vmc, energy, variance
 
 # ============= Main program
@@ -261,22 +272,31 @@ delta = 1.0 # Detuning
 lr = 0.01     # learning rate of Adam optimizer
 nh = 40        # Number of hidden units in the GRU cell
 ns = 1000     # Number of samples used to approximate the energy at each step
-qmc_epochs = 4000 # Training iterations for qmc, if 0 only do vmc
+qmc_epochs = 134 # Training iterations for qmc, if 0 only do vmc
 vmc_epochs = 0 # Training iterations for vmc, if 0 only do qmc
 total_epochs = vmc_epochs+qmc_epochs # Total training iterations
 seed = 1234    # Seed of RNG
 batch_size = 100 # Batch size for QMC training
-skip_data = 100 # Skip elements in QMC data set
-load_weights = False # Decide if previously stored weights should be loaded
+skip_data = 1 # Skip elements in QMC data set
 
 exact_energy = {4: -0.4534132086591546, 8: -0.40518005298872917, 12:-0.3884864748124427 , 16: -0.380514770608724}
 
-wavefunction = VariationalMonteCarlo(Lx,Ly,V,Omega,delta,nh,lr,Lx+Ly,seed)
-if load_weights == True:
-    wavefunction.load_weights("QMC.weights")
-    energy = np.loadtxt("E_QMC_{}_{}.dat".format(Lx,nh)).tolist()
+# Distinguish between a new run and a continued run
+continuation = 'True' # Tells the program if the run is a continuation of a previous run
+                      # If continuation = 'False' then the RNN will be randomly initialized and trained from there
+                      # If continuation = 'True' then the RNN will read in the hidden units and weights from previous runs and
+                      # continue training from there
+
+if continuation == 'True':
+    # read in the previous weights
+    wavefunction = VariationalMonteCarlo(Lx,Ly,V,Omega,delta,nh,lr,Lx+Ly,seed)
+    wavefunction.load_weights("qmc.weights")
+    energy = np.loadtxt("E_QMC_{}_{}_fulldata.dat".format(Lx,nh)).tolist()
+
 else:
+    wavefunction = VariationalMonteCarlo(Lx,Ly,V,Omega,delta,nh,lr,Lx+Ly,seed)
     energy = []
+
 variance = []
 
 if qmc_epochs != 0:
@@ -294,12 +314,6 @@ if qmc_epochs != 0:
     # Optimize with data first
     wavefunction, energy, variance = run_VMC(wavefunction, qmc_epochs, delta, qmc_dataset, energy, variance, batch_size)
 
-    #a_file = open("E12qmc_lr001.dat", "w")
-    #np.savetxt(a_file, energy)
-    #a_file.close()
-
-    #wavefunction.save_weights("qmc.weights")
-    #wavefunction.load_weights("qmc.weights")
-
 if vmc_epochs != 0:
     wavefunction, energy, variance = run_VMC(wavefunction, vmc_epochs, delta, None, energy, variance, batch_size)
+    
